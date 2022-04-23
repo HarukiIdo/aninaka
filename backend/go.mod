@@ -1,4 +1,4 @@
-module github.com/HarukiIdo/aninaka
+module github.com/HarukiIdo/aninaka/backend
 
 go 1.17
 

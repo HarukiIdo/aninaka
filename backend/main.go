@@ -1,7 +1,8 @@
+// Sample Go code for user authorization
+
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,38 +12,19 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"github.com/HarukiIdo/backend/pkg"
 
+	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/youtube/v3"
 )
 
-const developerKey = "Your developer key"
-const launchWebServer = true
+const credentialFilePath = "client_secret.json"
 
-func main() {
-	//ctx := context.Background()
-
-	b, err := ioutil.ReadFile("client_secret.json")
-	if err == nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-
-	config, err := google.ConfigFromJSON(b, youtube.YoutubeReadonlyScope)
-	if err == nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-
-	config.RedirectURL = "http://localhost:8090"
-
-	//client := getClient(ctx, config)
-	//service, err := youtube.New(client)
-	if err != nil {
-		handleError(err, "Error creating Youtube client")
-	}
-
-	// /channelsListByUsername(service, "snippet,contentDetails,statistics", "GoogleDevelopers")
-}
+const missingClientSecretsMessage = `
+Please configure OAuth 2.0
+`
 
 // getClient uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
@@ -59,8 +41,7 @@ func getClient(ctx context.Context, config *oauth2.Config) *http.Client {
 	return config.Client(ctx, tok)
 }
 
-// getTokenFromWeb uses Config to request a Token.
-// It returns the retrieved Token.
+// Webにアクセスし OAuth2.0認証を行い、tokenを取得
 func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Go to the following link in your browser then type the "+
@@ -91,8 +72,7 @@ func tokenCacheFile() (string, error) {
 		url.QueryEscape("youtube-go-quickstart.json")), err
 }
 
-// tokenFromFile retrieves a Token from a given file path.
-// It returns the retrieved Token and any read error encountered.
+// tokenをローカルファイルから取得
 func tokenFromFile(file string) (*oauth2.Token, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -104,8 +84,7 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 	return t, err
 }
 
-// saveToken uses a file path to create a file and store the
-// token in it.
+// tokenをローカルファイルとして保存
 func saveToken(file string, token *oauth2.Token) {
 	fmt.Printf("Saving credential file to: %s\n", file)
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
@@ -135,4 +114,47 @@ func channelsListByUsername(service *youtube.Service, part []string, forUsername
 		response.Items[0].Id,
 		response.Items[0].Snippet.Title,
 		response.Items[0].Statistics.ViewCount))
+}
+
+func getPlayList(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+
+	b, err := ioutil.ReadFile(credentialFilePath)
+	if err != nil {
+		log.Fatalf("Unable to read client secret file: %v", err)
+	}
+
+	// If modifying these scopes, delete your previously saved credentials
+	// at ~/.credentials/youtube-go-quickstart.json
+	config, err := google.ConfigFromJSON(b, youtube.YoutubeScope)
+	if err != nil {
+		log.Fatalf("Unable to parse client secret file to config: %v", err)
+	}
+	client := getClient(ctx, config)
+
+	service, err := youtube.New(client)
+
+	handleError(err, "Error creating YouTube client")
+	var part [3]string
+	part[0] = "snippet"
+	part[1] = "contentDetails"
+	part[2] = "statistics"
+
+	channelsListByUsername(service, part[:], "GoogleDevelopers")
+}
+
+func main() {
+	const defaultPort = ":8080"
+
+	//handlerの設定
+	http.HandleFunc("/playlist", getPlayList)
+
+	//サーバ起動
+	http.ListenAndServe(defaultPort, nil)
+}
+
+type String string
+
+func (s String) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, s)
 }
