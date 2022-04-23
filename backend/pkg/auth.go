@@ -1,10 +1,9 @@
-package main
+package pkg
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -13,36 +12,7 @@ import (
 	"path/filepath"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/api/youtube/v3"
 )
-
-const developerKey = "Your developer key"
-const launchWebServer = true
-
-func main() {
-	//ctx := context.Background()
-
-	b, err := ioutil.ReadFile("client_secret.json")
-	if err == nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
-	}
-
-	config, err := google.ConfigFromJSON(b, youtube.YoutubeReadonlyScope)
-	if err == nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
-	}
-
-	config.RedirectURL = "http://localhost:8090"
-
-	//client := getClient(ctx, config)
-	//service, err := youtube.New(client)
-	if err != nil {
-		handleError(err, "Error creating Youtube client")
-	}
-
-	// /channelsListByUsername(service, "snippet,contentDetails,statistics", "GoogleDevelopers")
-}
 
 // getClient uses a Context and Config to retrieve a Token
 // then generate a Client. It returns the generated Client.
@@ -114,25 +84,4 @@ func saveToken(file string, token *oauth2.Token) {
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
-}
-
-func handleError(err error, message string) {
-	if message == "" {
-		message = "Error making API call"
-	}
-	if err != nil {
-		log.Fatalf(message+": %v", err.Error())
-	}
-}
-
-func channelsListByUsername(service *youtube.Service, part []string, forUsername string) {
-	call := service.Channels.List(part)
-	call = call.ForUsername(forUsername)
-	response, err := call.Do()
-	handleError(err, "")
-	fmt.Println(fmt.Sprintf("This channel's ID is %s. Its title is '%s', "+
-		"and it has %d views.",
-		response.Items[0].Id,
-		response.Items[0].Snippet.Title,
-		response.Items[0].Statistics.ViewCount))
 }
