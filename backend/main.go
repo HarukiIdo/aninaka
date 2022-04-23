@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
-	"github.com/HarukiIdo/backend/pkg"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
